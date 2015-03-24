@@ -124,7 +124,7 @@ class DataSource(val dsp: DataSourceParams)
     //      )
     //    }
 
-    ////// can't figure out why this does not work...
+    ////// can't figure out why this does not work... OUTPUT => https://gist.github.com/nickpoorman/caae970126d18fee1c2b
     // we need to first map all the trainingRatings
     val userIds = ratingsRDD.map(_.user).distinct().collect()
     // TODO: ? get rid of any users that have less than the number of evalK
@@ -164,11 +164,6 @@ class DataSource(val dsp: DataSourceParams)
   }
 
 }
-
-//case class FoldData(
-//  index: Int,
-//  training: RDD[Rating],
-//  testing: RDD[Rating]) extends Serializable
 
 case class Rating(
   user: String,
