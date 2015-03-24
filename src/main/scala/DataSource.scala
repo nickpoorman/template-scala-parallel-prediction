@@ -89,11 +89,68 @@ class DataSource(val dsp: DataSourceParams)
 
     // K-fold splitting
     val evalK = dsp.evalK.get
-    val indexedRatings: RDD[(Rating, Long)] = ratingsRDD.zipWithIndex
+    //    val indexedRatings: RDD[(Rating, Long)] = ratingsRDD.zipWithIndex
+    //        (0 until evalK).map { idx =>
+    //      val trainingRatings = indexedRatings.filter(_._2 % evalK != idx).map(_._1)
+    //      val testingRatings = indexedRatings.filter(_._2 % evalK == idx).map(_._1)
+    //
+    //      (
+    //        new TrainingData(trainingRatings),
+    //        new EmptyEvaluationInfo(),
+    //        testingRatings.map {
+    //          r => (new Query(r.user, r.item), new ActualResult(r.rating))
+    //        }
+    //      )
+    //    }
+
+    //// Need to split by user and by items
+
+    //    val indexedItems = ratingsRDD.map(_.item).distinct().zipWithIndex()
+    //    (0 until evalK).map { idx =>
+    //      val trainingItems = indexedItems.filter(_._2 % evalK != idx).map(_._1).distinct().collect()
+    //      val testingItems = indexedItems.filter(_._2 % evalK == idx).map(_._1).distinct().collect()
+    //
+    //      // group the ratings by which fold they are in
+    //      val trainingRatings = ratingsRDD.filter { rating => trainingItems.contains(rating.item) }
+    //      val trainingUsers = trainingRatings.map(_.user).distinct().collect()
+    //      val testingRatings = ratingsRDD.filter { rating => testingItems.contains(rating.item) }.filter { r => trainingUsers.contains(r.user) && trainingItems.contains(r.item) }
+    //
+    //      (
+    //        new TrainingData(trainingRatings),
+    //        new EmptyEvaluationInfo(),
+    //        testingRatings.map {
+    //          r => (new Query(r.user, r.item), new ActualResult(r.rating))
+    //        }
+    //      )
+    //    }
+
+    ////// can't figure out why this does not work...
+    // we need to first map all the trainingRatings
+    val userIds = ratingsRDD.map(_.user).distinct().collect()
+    // TODO: ? get rid of any users that have less than the number of evalK
 
     (0 until evalK).map { idx =>
-      val trainingRatings = indexedRatings.filter(_._2 % evalK != idx).map(_._1)
-      val testingRatings = indexedRatings.filter(_._2 % evalK == idx).map(_._1)
+      // then for each of the users we want to split their ratings into two groups
+      val trainingRatings = userIds.map { user =>
+        // get all the ratings for this user
+        val userRatings = ratingsRDD.filter(_.user == user).zipWithIndex()
+        // we want to get only the training ratings
+        userRatings.filter(_._2 % evalK != idx).map(_._1)
+      }.reduce((l, r) => l.union(r))
+
+      // get rid of any items in the test set that were not in the training set
+      // get rid of any users in the test set that were not in the training set
+      val trainingUsers = trainingRatings.map(_.user).distinct().collect()
+      val trainingItems = trainingRatings.map(_.item).distinct().collect()
+
+      val testingRatings = userIds.map { user =>
+        // get all the ratings for this user
+        val userRatings = ratingsRDD.filter(_.user == user).zipWithIndex()
+        // we want to get only the testingRatings ratings
+        userRatings.filter(_._2 % evalK == idx).map(_._1)
+      }.reduce((l, r) => l.union(r)).filter { r =>
+        trainingUsers.contains(r.user) && trainingItems.contains(r.item)
+      }
 
       (
         new TrainingData(trainingRatings),
@@ -103,9 +160,15 @@ class DataSource(val dsp: DataSourceParams)
         }
       )
     }
+
   }
 
 }
+
+//case class FoldData(
+//  index: Int,
+//  training: RDD[Rating],
+//  testing: RDD[Rating]) extends Serializable
 
 case class Rating(
   user: String,

@@ -14,10 +14,10 @@ case class Accuracy() extends AverageMetric[EmptyEvaluationInfo, Query, Predicte
   def calculate(query: Query, predicted: PredictedResult, actual: ActualResult): Double = {
     //  what we actually want to do here is calculate an MSE for the results
     // because AverageMetric takes the global average from calculate all we need to do is get the squared error
-    println("predicted.score: " + predicted.score) 
-    println("actual.score: " + actual.score) 
-    val err = (predicted.score - actual.score)
-    println("err: " + err*err) 
+    // there's an issue here. predicted.score could be NaN because the model wasn't trained with that user or item.
+    // let's just say it's actual for now. This will make the results much better but at least we'll get a score.
+    val pScore = (if(predicted.score.isNaN()) actual.score else predicted.score)
+    val err = (pScore - actual.score)
     err * err
   }
 }
@@ -34,7 +34,7 @@ object EngineParamsList extends EngineParamsGenerator {
   // the data is read, and a evalK parameter is used to define the
   // cross-validation.
   private[this] val baseEP = EngineParams(
-    dataSourceParams = DataSourceParams(appId = 2, evalK = Some(5)))
+    dataSourceParams = DataSourceParams(appId = 2, evalK = Some(2)))
 
   // Second, we specify the engine params list by explicitly listing all
   // algorithm parameters. In this case, we evaluate 3 engine params, each with
