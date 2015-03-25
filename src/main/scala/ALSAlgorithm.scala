@@ -71,6 +71,8 @@ class ALSAlgorithm(val ap: ALSAlgorithmParams)
     // Convert String ID to Int index for Mllib
     model.userStringIntMap.get(query.user).map { userInt =>
       model.itemStringIntMap.get(query.item).map { itemInt =>
+        println("userInt:" + userInt)
+        println("itemInt:" + itemInt)
         // create inverse view of itemStringIntMap
         // val itemIntStringMap = model.itemStringIntMap.inverse
         // recommendProducts() returns Array[MLlibRating], which uses item Int
